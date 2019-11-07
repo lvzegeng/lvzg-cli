@@ -7,26 +7,156 @@ const chalk = require('chalk');
 const logSymbols = require('log-symbols');
 const download = require('../lib/download');
 
-program
-  .option('-t, --test', 'test')
-  .usage('初始化项目')
-  .parse(process.argv);
+program.usage('数据治理项目前端自动部署工具').parse(process.argv);
 
-if (program.test) {
-  console.log(program.opts());
-  return;
+const configFilePath = path.join(__dirname, '../lib/config.js');
+
+function getConfigs() {
+  return JSON.parse(fs.readFileSync(configFilePath, { encoding: 'utf8' }));
 }
 
-// 根据输入，获取项目名称
-const projectName = program.args[0];
-if (!projectName) {
-  // 输出帮助信息的同时不退出
-  program.outputHelp();
-  return;
+function getConfig(path) {
+  const target = getConfigs().find(item => item.path === path);
+  return target || {};
 }
 
-const list = fs.readdirSync(process.cwd()); // 遍历当前目录
-const rootName = path.basename(process.cwd());
+function setConfig(config) {
+  const configs = getConfigs();
+  const targetIndex = configs.findIndex(item => item.path === config.path);
+
+  if (targetIndex === -1) {
+    configs.push(config);
+  } else {
+    configs[targetIndex] = config;
+  }
+
+  fs.writeFileSync(configFilePath, JSON.stringify(configs));
+}
+
+selectPath();
+
+async function selectPath() {
+  const configs = getConfigs();
+  const answers = await inquirer.prompt([
+    {
+      type: 'list', // rawlist
+      name: 'path',
+      message: '选择部署路径',
+      choices: [...configs.map(item => item.path), '新建'],
+    },
+  ]);
+
+  if (answers.path === '新建') {
+    createPath();
+  } else {
+    const config = getConfig(answers.path);
+    selectOperation(config);
+  }
+}
+
+async function selectOperation(config) {
+  const answer = await inquirer.prompt([
+    {
+      type: 'list', // rawlist
+      name: 'operation',
+      message: '操作？',
+      choices: ['部署', '修改配置'],
+    },
+  ]);
+
+  if (answer.operation === '部署') {
+    deploy(config);
+  } else if (answer.operation === '修改配置') {
+    createConfig(config);
+  }
+}
+
+async function createPath() {
+  const answers1 = await inquirer.prompt([
+    {
+      type: 'input', // rawlist
+      name: 'path',
+      message: '输入部署路径',
+      default: process.cwd(),
+    },
+  ]);
+
+  try {
+    const files = fs.readdirSync(answers1.path);
+
+    if (
+      files.length === 0 ||
+      (files.includes('config.js') && files.includes('logo.png') && files.includes('index.html'))
+    ) {
+      createConfig({ path: answers1.path });
+    } else {
+      const answer2 = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'isContinue',
+          message: '检测到该文件夹不为空，并且有可能不是数据治理的数据，确定继续？',
+          default: false,
+        },
+      ]);
+      if (answer2.isContinue) {
+        createConfig({ path: answers1.path });
+      } else {
+        selectPath();
+      }
+    }
+  } catch (e) {
+    // fs.mkdirSync(answers1.path)
+    console.log('文件夹不存在，请先建立');
+  }
+}
+
+async function createConfig(config) {
+  const { data = {} } = config;
+  console.log(data);
+  const answer = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'schoolName',
+      message: '学校名称？',
+      default: data.schoolName || '三盟科技',
+    },
+    {
+      type: 'input',
+      name: 'copyRight',
+      message: '版权？',
+      default: data.copyRight || 'Copyright 三盟科技股份有限公司',
+    },
+    {
+      type: 'list', // rawlist
+      name: 'version',
+      message: '版本？',
+      choices: [{ name: '单独版/整合版', value: 0 }, { name: '标准版', value: 1 }],
+      default: data.version === undefined ? 0 : data.version,
+    },
+  ]);
+
+  setConfig({
+    ...config,
+    data: answer,
+  });
+  console.log('配置创建成功');
+  selectPath();
+}
+
+async function deploy(config) {
+  // 下载路径
+  const downloadTemp = path.join(__dirname, '../.download-temp');
+  try {
+    fs.rmdirSync(downloadTemp);
+  } catch (e) {
+    console.log(e);
+  }
+  // 下载完成之后，再将临时下载目录中将项目模板文件转移到项目目录中，可以使用新的API copyFile()
+  await download(downloadTemp);
+}
+
+/*
+
 let next;
 // 如果当前目录不为空，目录中不存在与project-name同名的目录，则创建以project-name作为名称的目录作为工程的根目录，否则提示项目已经存在，结束命令执行
 if (list.length) {
@@ -70,77 +200,7 @@ async function go() {
     // 下载完成之后，再将临时下载目录中将项目模板文件转移到项目目录中，可以使用新的API copyFile()
     const downloadTemp = await download(projectRoot);
 
-    // 下载完成后，提示用户输入新项目信息
-    const answers = await inquirer.prompt([
-      {
-        name: 'projectName',
-        message: '项目的名称',
-        default: projectRoot,
-      },
-      {
-        name: 'projectVersion',
-        message: '项目的版本号',
-        default: '1.0.0',
-      },
-      {
-        name: 'projectDescription',
-        message: '项目的简介',
-        default: `A project named ${projectRoot}`,
-      },
-      {
-        type: 'confirm',
-        name: 'toBeDelivered',
-        message: 'Is this for delivery?',
-        default: false,
-      },
-      {
-        type: 'list', // rawlist
-        name: 'size',
-        message: 'What size do you need?',
-        choices: ['Jumbo', 'Large', 'Standard', 'Medium', 'Small', 'Micro'],
-        when(answers) {
-          return answers.toBeDelivered === false;
-        },
-      },
-      {
-        type: 'checkbox',
-        message: 'Select toppings',
-        name: 'toppings',
-        choices: [
-          {
-            name: 'Ham',
-            checked: true,
-          },
-          {
-            name: 'Mozzarella',
-          },
-        ],
-      },
-      {
-        type: 'input',
-        name: 'phone',
-        message: "What's your phone number",
-        default: 'Doe',
-        validate(value) {
-          const pass = value.match(
-            /^([01]{1})?[-.\s]?\(?(\d{3})\)?[-.\s]?(\d{3})[-.\s]?(\d{4})\s?((?:#|ext\.?\s?|x\.?\s?){1}(?:\d+)?)?$/i,
-          );
-          if (pass) {
-            return true;
-          }
 
-          return 'Please enter a valid phone number';
-        },
-      },
-      {
-        type: 'password',
-        message: 'Enter a masked password',
-        name: 'password2',
-        mask: '*',
-      },
-    ]);
-
-    console.log(answers);
     // 成功用绿色显示，给出积极的反馈
     // logSymbols.info    logSymbols.warning
     console.log(logSymbols.success, chalk.green('创建成功:)'));
@@ -150,3 +210,4 @@ async function go() {
     console.error(logSymbols.error, chalk.red(`创建失败：${err}`));
   }
 }
+*/
