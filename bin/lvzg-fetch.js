@@ -37,6 +37,12 @@ function setConfig(config) {
   fs.writeFileSync(configFilePath, JSON.stringify(configs));
 }
 
+function removeConfig(path) {
+  const configs = getConfigs().filter(item => item.path !== path);
+
+  fs.writeFileSync(configFilePath, JSON.stringify(configs));
+}
+
 // 删除文件夹内的文件
 function deleteFolderRecursive(url) {
   var files = [];
@@ -97,7 +103,7 @@ async function selectOperation(config) {
       type: 'list', // rawlist
       name: 'operation',
       message: '操作？',
-      choices: ['部署/更新', '修改配置'],
+      choices: ['部署/更新', '修改配置', '删除部署路径'],
     },
   ]);
 
@@ -105,6 +111,22 @@ async function selectOperation(config) {
     deploy(config);
   } else if (answer.operation === '修改配置') {
     createConfig(config);
+  } else if (answer.operation === '删除部署路径') {
+    const answer2 = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'isDelete',
+        message: '确定删除部署路径 (NO)?',
+        default: false,
+      },
+    ]);
+    if (answer2.isDelete) {
+      removeConfig(config.path);
+      message.success('删除成功');
+      selectPath();
+    } else {
+      selectOperation(config);
+    }
   }
 }
 
