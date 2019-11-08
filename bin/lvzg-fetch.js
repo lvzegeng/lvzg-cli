@@ -4,9 +4,8 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const inquirer = require('inquirer');
-const chalk = require('chalk');
-const logSymbols = require('log-symbols');
 const download = require('../lib/download');
+const message = require('../lib/message');
 
 program.usage('数据治理项目前端自动部署工具').parse(process.argv);
 
@@ -41,32 +40,23 @@ function setConfig(config) {
 // 删除文件夹内的文件
 function deleteFolderRecursive(url) {
   var files = [];
-  /**
-   * 判断给定的路径是否存在
-   */
+  // 判断给定的路径是否存在
   if (fs.existsSync(url)) {
-    /**
-     * 返回文件和子目录的数组
-     */
+    // 返回文件和子目录的数组
     files = fs.readdirSync(url);
     files.forEach(function(file, index) {
       var curPath = path.join(url, file);
-      /**
-       * fs.statSync同步读取文件夹文件，如果是文件夹，在重复触发函数
-       */
+      // fs.statSync同步读取文件夹文件，如果是文件夹，在重复触发函数
       if (fs.statSync(curPath).isDirectory()) {
-        // recurse
         deleteFolderRecursive(curPath);
       } else {
         fs.unlinkSync(curPath);
       }
     });
-    /**
-     * 清除文件夹
-     */
+    // 清除文件夹
     fs.rmdirSync(url);
   } else {
-    console.log('给定的路径不存在，请给出正确的路径');
+    // console.log('给定的路径不存在，请给出正确的路径');
   }
 }
 
@@ -107,11 +97,11 @@ async function selectOperation(config) {
       type: 'list', // rawlist
       name: 'operation',
       message: '操作？',
-      choices: ['部署', '修改配置'],
+      choices: ['部署/更新', '修改配置'],
     },
   ]);
 
-  if (answer.operation === '部署') {
+  if (answer.operation === '部署/更新') {
     deploy(config);
   } else if (answer.operation === '修改配置') {
     createConfig(config);
@@ -149,17 +139,17 @@ async function createPath() {
         createConfig({ path: answers1.path });
       } else {
         selectPath();
+        message.info('退出创建');
       }
     }
   } catch (e) {
-    console.log(`文件夹${answers1.path}不存在，稍后记得建立`);
+    message.info(`文件夹${answers1.path}不存在，稍后记得建立`);
     createConfig({ path: answers1.path });
   }
 }
 
 async function createConfig(config) {
   const { data = {} } = config;
-  console.log(data);
   const answer = await inquirer.prompt([
     {
       type: 'input',
@@ -192,7 +182,7 @@ async function createConfig(config) {
     ...config,
     data: answer,
   });
-  console.log('配置创建成功');
+  message.success('配置创建成功');
   selectPath();
 }
 
@@ -200,7 +190,6 @@ async function deploy(config) {
   // 下载路径
   const downloadTemp = path.join(__dirname, '../.download-temp');
   deleteFolderRecursive(downloadTemp);
-  // 下载完成之后，再将临时下载目录中将项目模板文件转移到项目目录中，可以使用新的API copyFile()
   await download(downloadTemp);
 
   try {
@@ -209,7 +198,7 @@ async function deploy(config) {
       fs.copyFileSync(path.join(config.path, item), path.join(downloadTemp, item));
     });
   } catch (e) {
-    console.log('目标文件夹没有配置');
+    // console.log('目标文件夹没有配置');
   }
 
   const str = `window.config = ${JSON.stringify(config.data)}`;
@@ -220,7 +209,7 @@ async function deploy(config) {
 
   fs.renameSync(downloadTemp, config.path);
 
-  console.log('部署成功');
+  message.success('部署成功');
 
   // const configjs = fs.readFileSync(path.join(downloadTemp, 'config.js'), { encoding: 'utf8' })
   // const objStr = configjs.slice(configjs.indexOf('{'))
@@ -231,20 +220,6 @@ async function deploy(config) {
   // fs.copyFile(src, dest[, flags], callback(err))  将 src 拷贝到 dest，如果 dest 已经存在会被覆盖
   //    src     <string> | <Buffer> | <URL> 要被拷贝的源文件名称
   //    dest    <string> | <Buffer> | <URL> 拷贝操作的目标文件名
+
   process.exit(0);
 }
-
-/*
-
-async function go() {
-  try {
-    // 成功用绿色显示，给出积极的反馈
-    // logSymbols.info    logSymbols.warning
-    console.log(logSymbols.success, chalk.green('创建成功:)'));
-    // 实现脚手架给模板插值的功能  lib/generator.js
-  } catch (err) {
-    // 失败了用红色，增强提示
-    console.error(logSymbols.error, chalk.red(`创建失败：${err}`));
-  }
-}
-*/

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 const program = require('commander');
-const package = require('../package');
+const package = require('../package.json');
 
 program
   // 处理显示版本命令，默认选项标识为-V和--version，当存在时会打印版本号并退出
