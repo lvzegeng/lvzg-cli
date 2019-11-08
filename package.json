@@ -1,6 +1,6 @@
 {
   "name": "lvzg",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "description": "数据治理项目前端自动部署工具",
   "main": "lib/lvzg.js",
   "scripts": {

@@ -28,10 +28,6 @@ package-lock.json
 functions/*
 .temp/**
 
-# umi
-.umi
-.umi-production
-
 # screenshot
 screenshot
 .firebase
@@ -40,3 +36,5 @@ screenshot
 build
 eslinterror.log
 stylelinterror.log
+
+.download-temp

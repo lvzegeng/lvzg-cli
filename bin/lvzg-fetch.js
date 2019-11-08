@@ -2,6 +2,7 @@
 const program = require('commander');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const inquirer = require('inquirer');
 const chalk = require('chalk');
 const logSymbols = require('log-symbols');
@@ -9,10 +10,14 @@ const download = require('../lib/download');
 
 program.usage('数据治理项目前端自动部署工具').parse(process.argv);
 
-const configFilePath = path.join(__dirname, '../lib/config.js');
+const configFilePath = path.join(os.homedir(), '.lvzg');
 
 function getConfigs() {
-  return JSON.parse(fs.readFileSync(configFilePath, { encoding: 'utf8' }));
+  try {
+    return JSON.parse(fs.readFileSync(configFilePath, { encoding: 'utf8' }));
+  } catch (e) {
+    return [];
+  }
 }
 
 function getConfig(path) {
@@ -33,16 +38,58 @@ function setConfig(config) {
   fs.writeFileSync(configFilePath, JSON.stringify(configs));
 }
 
+// 删除文件夹内的文件
+function deleteFolderRecursive(url) {
+  var files = [];
+  /**
+   * 判断给定的路径是否存在
+   */
+  if (fs.existsSync(url)) {
+    /**
+     * 返回文件和子目录的数组
+     */
+    files = fs.readdirSync(url);
+    files.forEach(function(file, index) {
+      var curPath = path.join(url, file);
+      /**
+       * fs.statSync同步读取文件夹文件，如果是文件夹，在重复触发函数
+       */
+      if (fs.statSync(curPath).isDirectory()) {
+        // recurse
+        deleteFolderRecursive(curPath);
+      } else {
+        fs.unlinkSync(curPath);
+      }
+    });
+    /**
+     * 清除文件夹
+     */
+    fs.rmdirSync(url);
+  } else {
+    console.log('给定的路径不存在，请给出正确的路径');
+  }
+}
+
 selectPath();
 
 async function selectPath() {
   const configs = getConfigs();
+  const choices = configs.map(item => {
+    const result = { name: item.path };
+    try {
+      fs.readdirSync(item.path);
+    } catch (e) {
+      result.disabled = '路径不存在，请先建立';
+    }
+    return result;
+  });
+
   const answers = await inquirer.prompt([
     {
       type: 'list', // rawlist
       name: 'path',
       message: '选择部署路径',
-      choices: [...configs.map(item => item.path), '新建'],
+      choices: [...choices, '新建'],
     },
   ]);
 
@@ -94,7 +141,7 @@ async function createPath() {
         {
           type: 'confirm',
           name: 'isContinue',
-          message: '检测到该文件夹不为空，并且有可能不是数据治理的数据，确定继续？',
+          message: '检测到该文件夹不为空，并且有可能不是数据治理的数据，确定继续？ (NO)',
           default: false,
         },
       ]);
@@ -105,8 +152,8 @@ async function createPath() {
       }
     }
   } catch (e) {
-    // fs.mkdirSync(answers1.path)
-    console.log('文件夹不存在，请先建立');
+    console.log(`文件夹${answers1.path}不存在，稍后记得建立`);
+    createConfig({ path: answers1.path });
   }
 }
 
@@ -133,6 +180,12 @@ async function createConfig(config) {
       choices: [{ name: '单独版/整合版', value: 0 }, { name: '标准版', value: 1 }],
       default: data.version === undefined ? 0 : data.version,
     },
+    {
+      type: 'input',
+      name: 'port',
+      message: '端口，外壳80端口为空,不要填',
+      default: data.port || '',
+    },
   ]);
 
   setConfig({
@@ -146,61 +199,45 @@ async function createConfig(config) {
 async function deploy(config) {
   // 下载路径
   const downloadTemp = path.join(__dirname, '../.download-temp');
-  try {
-    fs.rmdirSync(downloadTemp);
-  } catch (e) {
-    console.log(e);
-  }
+  deleteFolderRecursive(downloadTemp);
   // 下载完成之后，再将临时下载目录中将项目模板文件转移到项目目录中，可以使用新的API copyFile()
   await download(downloadTemp);
+
+  try {
+    const files = ['logo.png'];
+    files.forEach(item => {
+      fs.copyFileSync(path.join(config.path, item), path.join(downloadTemp, item));
+    });
+  } catch (e) {
+    console.log('目标文件夹没有配置');
+  }
+
+  const str = `window.config = ${JSON.stringify(config.data)}`;
+
+  fs.writeFileSync(path.join(downloadTemp, 'config.js'), str);
+
+  deleteFolderRecursive(config.path);
+
+  fs.renameSync(downloadTemp, config.path);
+
+  console.log('部署成功');
+
+  // const configjs = fs.readFileSync(path.join(downloadTemp, 'config.js'), { encoding: 'utf8' })
+  // const objStr = configjs.slice(configjs.indexOf('{'))
+  // console.log(objStr)
+  // console.log(eval(objStr))
+  // console.log(JSON.parse(objStr))
+
+  // fs.copyFile(src, dest[, flags], callback(err))  将 src 拷贝到 dest，如果 dest 已经存在会被覆盖
+  //    src     <string> | <Buffer> | <URL> 要被拷贝的源文件名称
+  //    dest    <string> | <Buffer> | <URL> 拷贝操作的目标文件名
+  process.exit(0);
 }
 
 /*
 
-let next;
-// 如果当前目录不为空，目录中不存在与project-name同名的目录，则创建以project-name作为名称的目录作为工程的根目录，否则提示项目已经存在，结束命令执行
-if (list.length) {
-  if (
-    list.some(name => {
-      const fileName = path.join(process.cwd(), name);
-      const isDir = fs.statSync(fileName).isDirectory();
-      return name === projectName && isDir;
-    })
-  ) {
-    console.log(`项目${projectName}已经存在`);
-    return;
-  }
-  next = Promise.resolve(projectName);
-}
-
-// 如果当前目录是空的，并且目录名称和项目名称相同，那么就通过终端交互的方式确认是否直接在当前目录下创建项目，否则，在当前目录下创建以project-name作为名称的目录作为工程的根目录
-else if (rootName === projectName) {
-  next = inquirer
-    .prompt([
-      {
-        name: 'buildInCurrent',
-        message: '当前目录为空，且目录名称和项目名称相同，是否直接在当前目录下创建新项目？',
-        type: 'confirm',
-        default: true,
-      },
-    ])
-    .then(answer => Promise.resolve(answer.buildInCurrent ? '.' : projectName));
-} else {
-  next = Promise.resolve(projectName);
-}
-
-next && go();
-
 async function go() {
   try {
-    const projectRoot = await next;
-    if (projectRoot !== '.') {
-      fs.mkdirSync(projectRoot);
-    }
-    // 下载完成之后，再将临时下载目录中将项目模板文件转移到项目目录中，可以使用新的API copyFile()
-    const downloadTemp = await download(projectRoot);
-
-
     // 成功用绿色显示，给出积极的反馈
     // logSymbols.info    logSymbols.warning
     console.log(logSymbols.success, chalk.green('创建成功:)'));
