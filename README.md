@@ -28,4 +28,13 @@
   自动部署指定路径，不用任何交互，需要确保路径已配置过，命令如 npx lvzg /root/test。可配合 Linux 的 crontab 命令实现指定时间自动更新
 
 - npx lvzg -s  
-  超级模式，增加了 设置、添加代码下载源 操作。等价于 npx lvzg --super
+  超级模式，增加了 设置、添加代码下载源 操作，为其他项目部署提供了接口。等价于 npx lvzg --super
+
+---
+
+## 截图
+
+![](https://github.com/lvzegeng/lvzg/blob/master/screenshots/1.png))
+![](https://github.com/lvzegeng/lvzg/blob/master/screenshots/2.png))
+![](https://github.com/lvzegeng/lvzg/blob/master/screenshots/3.png))
+![](https://github.com/lvzegeng/lvzg/blob/master/screenshots/4.png))
