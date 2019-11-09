@@ -13,6 +13,17 @@ program
   .usage('数据治理项目前端自动部署工具')
   .parse(process.argv);
 
+const deployPath = program.args[0];
+if (deployPath) {
+  const config = storage.get(deployPath);
+  if (config.path) {
+    deploy(config);
+  } else {
+    message.error('路径没配置过，请先配置');
+  }
+  return;
+}
+
 // 删除文件夹内的文件
 function deleteFolderRecursive(url) {
   let files = [];
