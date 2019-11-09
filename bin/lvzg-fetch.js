@@ -10,7 +10,7 @@ const { defaultDownloadSources } = require('../lib/data');
 
 program
   .option('-s, --super', '超级模式')
-  .usage('数据治理项目前端自动部署工具')
+  .usage('前端自动部署工具')
   .parse(process.argv);
 
 const deployPath = program.args[0];
