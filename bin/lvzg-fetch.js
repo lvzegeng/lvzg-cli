@@ -6,7 +6,7 @@ const inquirer = require('inquirer');
 const download = require('../lib/download');
 const message = require('../lib/message');
 const storage = require('../lib/storage');
-const { downloadSources } = require('../lib/data');
+const { defaultDownloadSources } = require('../lib/data');
 
 program
   .option('-s, --super', '超级模式')
@@ -21,7 +21,8 @@ if (deployPath) {
   } else {
     message.error('路径没配置过，请先配置');
   }
-  return;
+} else {
+  selectPath();
 }
 
 // 删除文件夹内的文件
@@ -46,8 +47,6 @@ function deleteFolderRecursive(url) {
     // console.log('给定的路径不存在，请给出正确的路径');
   }
 }
-
-selectPath();
 
 async function selectPath() {
   const configs = storage.getAll();
@@ -116,66 +115,9 @@ async function selectOperation(config) {
       selectOperation(config);
     }
   } else if (answer.operation === '设置代码下载源') {
-    const arr = (config.download || []).map(item => item.source);
-    const choices = [...downloadSources, ...arr];
-    const choiceDownload = (config.download || []).find(item => item.choice);
-
-    const answer4 = await inquirer.prompt([
-      {
-        type: 'list',
-        name: 'downloadSource',
-        message: '请选择代码下载源',
-        choices,
-        default: choiceDownload ? choiceDownload.source : downloadSources[0],
-      },
-    ]);
-
-    const newDownload = config.download.map(item => {
-      const result = {
-        source: item.source,
-      };
-      if (answer4.downloadSource === item.source) {
-        result.choice = true;
-      }
-      return result;
-    });
-
-    const newConfig = {
-      ...config,
-      download: newDownload,
-    };
-    storage.save(newConfig);
-    selectOperation(newConfig);
+    setDownloadSource(config);
   } else if (answer.operation === '添加代码下载源') {
-    const answer3 = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'downloadSource',
-        message: '请输入代码下载源',
-        default: downloadSources[0],
-        validate(value) {
-          const dealStr = value.trim();
-
-          if (
-            [...downloadSources, ...(config.download || [])].some(item => item.source === dealStr)
-          ) {
-            return '不能输入已存在的下载地址';
-          }
-          if (!dealStr.startsWith('http')) {
-            return '输入的格式有误';
-          }
-
-          return true;
-        },
-      },
-    ]);
-
-    const newConfig = {
-      ...config,
-      download: [...(config.download || []), { source: answer3.downloadSource.trim() }],
-    };
-    storage.save(newConfig);
-    selectOperation(newConfig);
+    addDownloadSource(config);
   }
 }
 
@@ -259,8 +201,9 @@ async function createConfig(config) {
 
 async function deploy(config) {
   const downloadDir = path.join(__dirname, '../.download-temp');
-  const targetDownload = config.download && config.download.find(item => item.choice);
-  const downloadSrc = targetDownload ? targetDownload.source : downloadSources[0];
+  const downloadSrc =
+    config.download && config.download.choice ? config.download.choice : defaultDownloadSources[0];
+
   deleteFolderRecursive(downloadDir);
   await download(downloadDir, downloadSrc);
 
@@ -293,4 +236,66 @@ async function deploy(config) {
   message.success('部署成功');
 
   process.exit(0);
+}
+
+async function setDownloadSource(config) {
+  const sources = config.download && config.download.sources ? config.download.sources : [];
+  const choiceSource =
+    config.download && config.download.choice ? config.download.choice : defaultDownloadSources[0];
+  const choices = [...defaultDownloadSources, ...sources];
+
+  const answer = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'downloadSource',
+      message: '请选择代码下载源',
+      choices,
+      default: choiceSource,
+    },
+  ]);
+
+  const newConfig = {
+    ...config,
+    download: {
+      ...config.download,
+      choice: answer.downloadSource === defaultDownloadSources[0] ? '' : answer.downloadSource,
+    },
+  };
+  storage.save(newConfig);
+  selectOperation(newConfig);
+}
+
+async function addDownloadSource(config) {
+  const sources = config.download && config.download.sources ? config.download.sources : [];
+
+  const answer = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'downloadSource',
+      message: '请输入代码下载源',
+      default: defaultDownloadSources[0],
+      validate(value) {
+        const dealStr = value.trim();
+
+        if ([...defaultDownloadSources, ...sources].some(item => item === dealStr)) {
+          return '不能输入已存在的下载地址';
+        }
+        if (!dealStr.startsWith('http')) {
+          return '输入的格式有误';
+        }
+
+        return true;
+      },
+    },
+  ]);
+
+  const newConfig = {
+    ...config,
+    download: {
+      ...config.download,
+      sources: [...sources, answer.downloadSource.trim()],
+    },
+  };
+  storage.save(newConfig);
+  selectOperation(newConfig);
 }
