@@ -13,3 +13,9 @@ curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash - sudo apt-get ins
 ## 部署
 
 npx lvzg
+
+## 高级
+
+npx lvzg -s  
+npx lvzg --super  
+超级模式，可查看、修改代码下载源
