@@ -4,7 +4,7 @@ const package = require('../package.json');
 
 program
   // 处理显示版本命令，默认选项标识为-V和--version，当存在时会打印版本号并退出
-  .version(package.version, '-V, --version', 'output the current version')
+  .version(package.version, '-v, --version', 'output the current version')
 
   // 重写覆盖默认的帮助标识和描述
   .helpOption('-h, --help', 'read more information')

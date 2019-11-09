@@ -2,57 +2,23 @@
 const program = require('commander');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 const inquirer = require('inquirer');
 const download = require('../lib/download');
 const message = require('../lib/message');
+const storage = require('../lib/storage');
 
 program.usage('数据治理项目前端自动部署工具').parse(process.argv);
 
-const configFilePath = path.join(os.homedir(), '.lvzg');
-
-function getConfigs() {
-  try {
-    return JSON.parse(fs.readFileSync(configFilePath, { encoding: 'utf8' }));
-  } catch (e) {
-    return [];
-  }
-}
-
-function getConfig(path) {
-  const target = getConfigs().find(item => item.path === path);
-  return target || {};
-}
-
-function setConfig(config) {
-  const configs = getConfigs();
-  const targetIndex = configs.findIndex(item => item.path === config.path);
-
-  if (targetIndex === -1) {
-    configs.push(config);
-  } else {
-    configs[targetIndex] = config;
-  }
-
-  fs.writeFileSync(configFilePath, JSON.stringify(configs));
-}
-
-function removeConfig(path) {
-  const configs = getConfigs().filter(item => item.path !== path);
-
-  fs.writeFileSync(configFilePath, JSON.stringify(configs));
-}
-
 // 删除文件夹内的文件
 function deleteFolderRecursive(url) {
-  var files = [];
+  let files = [];
   // 判断给定的路径是否存在
   if (fs.existsSync(url)) {
     // 返回文件和子目录的数组
     files = fs.readdirSync(url);
-    files.forEach(function(file, index) {
-      var curPath = path.join(url, file);
-      // fs.statSync同步读取文件夹文件，如果是文件夹，在重复触发函数
+    files.forEach((file, index) => {
+      const curPath = path.join(url, file);
+      // 如果是文件夹，重复触发函数
       if (fs.statSync(curPath).isDirectory()) {
         deleteFolderRecursive(curPath);
       } else {
@@ -69,7 +35,8 @@ function deleteFolderRecursive(url) {
 selectPath();
 
 async function selectPath() {
-  const configs = getConfigs();
+  const configs = storage.getAll();
+  // 保存的路径
   const choices = configs.map(item => {
     const result = { name: item.path };
     try {
@@ -84,7 +51,7 @@ async function selectPath() {
     {
       type: 'list', // rawlist
       name: 'path',
-      message: '选择部署路径',
+      message: '请选择部署路径',
       choices: [...choices, '新建'],
     },
   ]);
@@ -92,7 +59,7 @@ async function selectPath() {
   if (answers.path === '新建') {
     createPath();
   } else {
-    const config = getConfig(answers.path);
+    const config = storage.get(answers.path);
     selectOperation(config);
   }
 }
@@ -121,7 +88,7 @@ async function selectOperation(config) {
       },
     ]);
     if (answer2.isDelete) {
-      removeConfig(config.path);
+      storage.remove(config.path);
       message.success('删除成功');
       selectPath();
     } else {
@@ -135,7 +102,7 @@ async function createPath() {
     {
       type: 'input', // rawlist
       name: 'path',
-      message: '输入部署路径',
+      message: '请输入部署路径',
       default: process.cwd(),
     },
   ]);
@@ -161,7 +128,7 @@ async function createPath() {
         createConfig({ path: answers1.path });
       } else {
         selectPath();
-        message.info('退出创建');
+        message.info('取消新建');
       }
     }
   } catch (e) {
@@ -200,48 +167,46 @@ async function createConfig(config) {
     },
   ]);
 
-  setConfig({
+  storage.save({
     ...config,
     data: answer,
   });
-  message.success('配置创建成功');
+  message.success('配置成功');
   selectPath();
 }
 
 async function deploy(config) {
-  // 下载路径
-  const downloadTemp = path.join(__dirname, '../.download-temp');
-  deleteFolderRecursive(downloadTemp);
-  await download(downloadTemp);
+  const downloadDir = path.join(__dirname, '../.download-temp');
+  deleteFolderRecursive(downloadDir);
+  await download(downloadDir);
 
   try {
+    // 替换为以前的文件
     const files = ['logo.png'];
     files.forEach(item => {
-      fs.copyFileSync(path.join(config.path, item), path.join(downloadTemp, item));
+      fs.copyFileSync(path.join(config.path, item), path.join(downloadDir, item));
     });
   } catch (e) {
     // console.log('目标文件夹没有配置');
   }
 
-  const str = `window.config = ${JSON.stringify(config.data)}`;
+  const configjs = fs.readFileSync(path.join(downloadDir, 'config.js'), { encoding: 'utf8' });
+  const configStr = configjs.slice(configjs.indexOf('{')).replace(/;/g, '');
 
-  fs.writeFileSync(path.join(downloadTemp, 'config.js'), str);
+  // 合并仓库的config.js以及脚手架配置
+  const configObj = {
+    ...(eval(`(${configStr})`) || {}),
+    ...config.data,
+  };
+
+  const str = `window.config = ${JSON.stringify(configObj)}`;
+
+  fs.writeFileSync(path.join(downloadDir, 'config.js'), str);
 
   deleteFolderRecursive(config.path);
-
-  fs.renameSync(downloadTemp, config.path);
+  fs.renameSync(downloadDir, config.path);
 
   message.success('部署成功');
-
-  // const configjs = fs.readFileSync(path.join(downloadTemp, 'config.js'), { encoding: 'utf8' })
-  // const objStr = configjs.slice(configjs.indexOf('{'))
-  // console.log(objStr)
-  // console.log(eval(objStr))
-  // console.log(JSON.parse(objStr))
-
-  // fs.copyFile(src, dest[, flags], callback(err))  将 src 拷贝到 dest，如果 dest 已经存在会被覆盖
-  //    src     <string> | <Buffer> | <URL> 要被拷贝的源文件名称
-  //    dest    <string> | <Buffer> | <URL> 拷贝操作的目标文件名
 
   process.exit(0);
 }
