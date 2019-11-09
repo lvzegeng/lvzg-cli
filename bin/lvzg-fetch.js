@@ -51,7 +51,7 @@ function deleteFolderRecursive(url) {
 async function selectPath() {
   const configs = storage.getAll();
   // 保存的路径
-  const choices = configs.map(item => {
+  const choices = configs.map((item) => {
     const result = { name: item.path };
     try {
       fs.readdirSync(item.path);
@@ -135,8 +135,10 @@ async function createPath() {
     const files = fs.readdirSync(answers1.path);
 
     if (
-      files.length === 0 ||
-      (files.includes('config.js') && files.includes('logo.png') && files.includes('index.html'))
+      files.length === 0
+      || (files.includes('config.js')
+        && files.includes('logo.png')
+        && files.includes('index.html'))
     ) {
       createConfig({ path: answers1.path });
     } else {
@@ -144,7 +146,8 @@ async function createPath() {
         {
           type: 'confirm',
           name: 'isContinue',
-          message: '检测到该文件夹不为空，并且有可能不是数据治理的数据，确定继续？ (NO)',
+          message:
+            '检测到该文件夹不为空，并且有可能不是数据治理的数据，确定继续？ (NO)',
           default: false,
         },
       ]);
@@ -180,7 +183,10 @@ async function createConfig(config) {
       type: 'list', // rawlist
       name: 'version',
       message: '版本？',
-      choices: [{ name: '单独版/整合版', value: 0 }, { name: '标准版', value: 1 }],
+      choices: [
+        { name: '单独版/整合版', value: 0 },
+        { name: '标准版', value: 1 },
+      ],
       default: data.version === undefined ? 0 : data.version,
     },
     {
@@ -201,8 +207,9 @@ async function createConfig(config) {
 
 async function deploy(config) {
   const downloadDir = path.join(__dirname, '../.download-temp');
-  const downloadSrc =
-    config.download && config.download.choice ? config.download.choice : defaultDownloadSources[0];
+  const downloadSrc = config.download && config.download.choice
+    ? config.download.choice
+    : defaultDownloadSources[0];
 
   deleteFolderRecursive(downloadDir);
   await download(downloadDir, downloadSrc);
@@ -210,14 +217,19 @@ async function deploy(config) {
   try {
     // 替换为以前的文件
     const files = ['logo.png'];
-    files.forEach(item => {
-      fs.copyFileSync(path.join(config.path, item), path.join(downloadDir, item));
+    files.forEach((item) => {
+      fs.copyFileSync(
+        path.join(config.path, item),
+        path.join(downloadDir, item),
+      );
     });
   } catch (e) {
     // console.log('目标文件夹没有配置');
   }
 
-  const configjs = fs.readFileSync(path.join(downloadDir, 'config.js'), { encoding: 'utf8' });
+  const configjs = fs.readFileSync(path.join(downloadDir, 'config.js'), {
+    encoding: 'utf8',
+  });
   const configStr = configjs.slice(configjs.indexOf('{')).replace(/;/g, '');
 
   // 合并仓库的config.js以及脚手架配置
@@ -240,8 +252,9 @@ async function deploy(config) {
 
 async function setDownloadSource(config) {
   const sources = config.download && config.download.sources ? config.download.sources : [];
-  const choiceSource =
-    config.download && config.download.choice ? config.download.choice : defaultDownloadSources[0];
+  const choiceSource = config.download && config.download.choice
+    ? config.download.choice
+    : defaultDownloadSources[0];
   const choices = [...defaultDownloadSources, ...sources];
 
   const answer = await inquirer.prompt([
@@ -258,7 +271,10 @@ async function setDownloadSource(config) {
     ...config,
     download: {
       ...config.download,
-      choice: answer.downloadSource === defaultDownloadSources[0] ? '' : answer.downloadSource,
+      choice:
+        answer.downloadSource === defaultDownloadSources[0]
+          ? ''
+          : answer.downloadSource,
     },
   };
   storage.save(newConfig);
@@ -277,7 +293,9 @@ async function addDownloadSource(config) {
       validate(value) {
         const dealStr = value.trim();
 
-        if ([...defaultDownloadSources, ...sources].some(item => item === dealStr)) {
+        if (
+          [...defaultDownloadSources, ...sources].some((item) => item === dealStr)
+        ) {
           return '不能输入已存在的下载地址';
         }
         if (!dealStr.startsWith('http')) {
