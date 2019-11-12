@@ -4,7 +4,8 @@
   "description": "前端自动部署工具",
   "main": "lib/lvzg.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "release": "npm version minor&&npm publish --access public"
   },
   "repository": {
     "type": "git",
