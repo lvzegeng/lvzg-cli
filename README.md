@@ -2,17 +2,17 @@
 
 ---
 
-## 安装 nodejs，nodejs 版本大于 8 可跳过，通过 node -v 查看版本
+## 安装
 
 ### 安装方式一：Using rpm
 
 - curl -sL https://rpm.nodesource.com/setup_13.x | sudo bash -
-- sudo yum install -y nodejs
+- sudo yum install -y nodejs git
 
 ### 安装方式二：Using Ubuntu
 
 - curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash -
-- sudo apt-get install -y nodejs
+- sudo apt-get install -y nodejs git
 
 ---
 

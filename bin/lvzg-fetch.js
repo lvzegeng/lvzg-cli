@@ -168,18 +168,6 @@ async function createConfig(config) {
   const { data = {} } = config;
   const answer = await inquirer.prompt([
     {
-      type: 'input',
-      name: 'schoolName',
-      message: '学校名称？',
-      default: data.schoolName || '三盟科技',
-    },
-    {
-      type: 'input',
-      name: 'copyRight',
-      message: '版权？',
-      default: data.copyRight || 'Copyright 三盟科技股份有限公司',
-    },
-    {
       type: 'list', // rawlist
       name: 'version',
       message: '版本？',
@@ -188,6 +176,24 @@ async function createConfig(config) {
         { name: '标准版', value: 1 },
       ],
       default: data.version === undefined ? 0 : data.version,
+    },
+    {
+      type: 'input',
+      name: 'schoolName',
+      message: '学校名称？',
+      default: data.schoolName || '三盟科技',
+      when(answers) {
+        return answers.version === 0;
+      }
+    },
+    {
+      type: 'input',
+      name: 'copyRight',
+      message: '版权？',
+      default: data.copyRight || 'Copyright 三盟科技股份有限公司',
+      when(answers) {
+        return answers.version === 0;
+      }
     },
     {
       type: 'input',
