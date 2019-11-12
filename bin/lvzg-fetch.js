@@ -200,6 +200,9 @@ async function createConfig(config) {
       name: 'port',
       message: '端口，外壳80端口为空,不要填',
       default: data.port || '',
+      when(answers) {
+        return answers.version === 1;
+      }
     },
   ]);
 
