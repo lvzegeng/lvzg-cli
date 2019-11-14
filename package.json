@@ -5,8 +5,10 @@
   "main": "lib/lvzg.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "release": "npm version patch -f&&npm publish --access public --tag latest"
+    "release": "npm version patch&&npm publish --access public --tag latest",
+    "test-release": "npm publish --dry-run"
   },
+  "files": ["lib", "bin"],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lvzegeng/lvzg.git"

@@ -24,7 +24,7 @@
 
 ## 高级（可跳过）
 
-- npx lvzg PATH  
+- npx lvzg PATH
   自动部署指定路径，不用任何交互，需要确保路径已配置过，命令如 npx lvzg /root/test。可配合 Linux 的 crontab 命令实现指定时间自动更新
 
 - npx lvzg -s  
