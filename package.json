@@ -1,6 +1,6 @@
 {
   "name": "lvzg",
-  "version": "3.0.8",
+  "version": "3.0.9",
   "description": "前端自动部署工具",
   "main": "lib/lvzg.js",
   "scripts": {
