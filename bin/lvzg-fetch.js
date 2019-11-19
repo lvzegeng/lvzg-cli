@@ -2,11 +2,15 @@
 const program = require('commander');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const inquirer = require('inquirer');
 const download = require('../lib/download');
 const message = require('../lib/message');
 const storage = require('../lib/storage');
+const packageJson = require('../package.json');
 const { defaultDownloadSources } = require('../lib/data');
+const fse = require('fs-extra')
+
 
 program
   .option('-s, --super', '超级模式')
@@ -23,29 +27,6 @@ if (deployPath) {
   }
 } else {
   selectPath();
-}
-
-// 删除文件夹内的文件
-function deleteFolderRecursive(url) {
-  let files = [];
-  // 判断给定的路径是否存在
-  if (fs.existsSync(url)) {
-    // 返回文件和子目录的数组
-    files = fs.readdirSync(url);
-    files.forEach((file, index) => {
-      const curPath = path.join(url, file);
-      // 如果是文件夹，重复触发函数
-      if (fs.statSync(curPath).isDirectory()) {
-        deleteFolderRecursive(curPath);
-      } else {
-        fs.unlinkSync(curPath);
-      }
-    });
-    // 清除文件夹
-    fs.rmdirSync(url);
-  } else {
-    // console.log('给定的路径不存在，请给出正确的路径');
-  }
 }
 
 async function selectPath() {
@@ -215,12 +196,11 @@ async function createConfig(config) {
 }
 
 async function deploy(config) {
-  const downloadDir = path.join(__dirname, '../.download-temp');
+  const downloadDir = fs.mkdtempSync(path.join(os.tmpdir(), packageJson.name))
   const downloadSrc = config.download && config.download.choice
     ? config.download.choice
     : defaultDownloadSources[0];
 
-  deleteFolderRecursive(downloadDir);
   await download(downloadDir, downloadSrc);
 
   try {
@@ -251,8 +231,7 @@ async function deploy(config) {
 
   fs.writeFileSync(path.join(downloadDir, 'config.js'), str);
 
-  deleteFolderRecursive(config.path);
-  fs.renameSync(downloadDir, config.path);
+  await fse.copy(downloadDir, config.path);
 
   message.success('部署成功');
 
