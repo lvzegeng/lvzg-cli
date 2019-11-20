@@ -2,12 +2,10 @@
 const program = require('commander');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 const inquirer = require('inquirer');
 const download = require('../lib/download');
 const message = require('../lib/message');
 const storage = require('../lib/storage');
-const packageJson = require('../package.json');
 const { defaultDownloadSources } = require('../lib/data');
 const fse = require('fs-extra')
 
@@ -196,12 +194,11 @@ async function createConfig(config) {
 }
 
 async function deploy(config) {
-  const downloadDir = fs.mkdtempSync(path.join(os.tmpdir(), packageJson.name))
   const downloadSrc = config.download && config.download.choice
     ? config.download.choice
     : defaultDownloadSources[0];
 
-  await download(downloadDir, downloadSrc);
+  const downloadDir = await download(downloadSrc);
 
   try {
     // 替换为以前的文件
