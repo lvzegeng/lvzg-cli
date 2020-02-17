@@ -3,12 +3,11 @@ const program = require('commander');
 const path = require('path');
 const fs = require('fs');
 const inquirer = require('inquirer');
+const fse = require('fs-extra');
 const download = require('../lib/download');
 const message = require('../lib/message');
 const storage = require('../lib/storage');
 const { defaultDownloadSources } = require('../lib/data');
-const fse = require('fs-extra')
-
 
 program
   .option('-s, --super', '超级模式')
@@ -163,7 +162,7 @@ async function createConfig(config) {
       default: data.schoolName || '三盟科技',
       when(answers) {
         return answers.version === 0;
-      }
+      },
     },
     {
       type: 'input',
@@ -172,7 +171,7 @@ async function createConfig(config) {
       default: data.copyRight || 'Copyright 三盟科技股份有限公司',
       when(answers) {
         return answers.version === 0;
-      }
+      },
     },
     {
       type: 'input',
@@ -181,7 +180,7 @@ async function createConfig(config) {
       default: data.port || '',
       when(answers) {
         return answers.version === 1;
-      }
+      },
     },
   ]);
 
