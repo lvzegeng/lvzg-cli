@@ -217,9 +217,17 @@ async function deploy(config) {
   });
   const configStr = configjs.slice(configjs.indexOf('{')).replace(/;/g, '');
 
+  const evalStr = `
+  const window = {
+    config: {}
+  }
+  ${configStr}
+  window.config
+  `;
+
   // 合并仓库的config.js以及脚手架配置
   const configObj = {
-    ...(eval(`(${configStr})`) || {}),
+    ...eval(evalStr),
     ...config.data,
   };
 
