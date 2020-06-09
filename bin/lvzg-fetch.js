@@ -215,19 +215,25 @@ async function deploy(config) {
   const configjs = fs.readFileSync(path.join(downloadDir, 'config.js'), {
     encoding: 'utf8',
   });
-  const configStr = configjs.slice(configjs.indexOf('{')).replace(/;/g, '');
 
   const evalStr = `
   const window = {
     config: {}
   }
-  ${configStr}
+  ${configjs}
   window.config
   `;
 
+  let configData = {};
+  try {
+    configData = eval(evalStr);
+  } catch (e) {
+    configData = {};
+  }
+
   // 合并仓库的config.js以及脚手架配置
   const configObj = {
-    ...eval(evalStr),
+    ...configData,
     ...config.data,
   };
 
