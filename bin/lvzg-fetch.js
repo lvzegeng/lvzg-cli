@@ -212,18 +212,9 @@ async function deploy(config) {
     // console.log('目标文件夹没有配置');
   }
 
-  const configjs = `
-window.config = {
-  schoolName: '三盟科技-数据治理平台',
-  copyRight: '', // Copyright 三盟科技股份有限公司
-  port: '', // 外壳80端口为空,不要填
-  version: 1, // 1 标准版  其他为整合版和单独版
-  loginUrl: '',  // 设置登录地址，在退出时使用，设置为空字符串将使用默认登录地址
-};
-`;
-  /* const configjs = fs.readFileSync(path.join(downloadDir, 'config.js'), {
+  const configjs = fs.readFileSync(path.join(downloadDir, 'config.js'), {
     encoding: 'utf8',
-  }); */
+  });
 
   const evalStr = `
   const window = {
